@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
 
 # Konfigurasi halaman
 st.set_page_config(page_title="Dashboard Order", layout="wide")
@@ -10,7 +9,7 @@ st.set_page_config(page_title="Dashboard Order", layout="wide")
 # Judul Aplikasi
 st.title("📊 Dashboard Analisis Order")
 
-# Membaca dataset langsung dari file
+# Membaca dataset
 customers_df = pd.read_csv("data/customers_dataset.csv")
 orders_df = pd.read_csv("data/orders_dataset.csv")
 payments_df = pd.read_csv("data/order_payments_dataset.csv")
@@ -24,38 +23,62 @@ if "order_purchase_timestamp" in df.columns:
     df["order_year"] = df["order_purchase_timestamp"].dt.year
     df["order_month"] = df["order_purchase_timestamp"].dt.to_period("M")
 
-# Menampilkan preview data
-st.subheader("📂 DataFrame Preview")
-st.dataframe(df.head())
+# Sidebar untuk filter tahun
+st.sidebar.header("Filter")
+selected_year = st.sidebar.selectbox("Pilih Tahun", options=["All Dates"] + sorted(df["order_year"].dropna().unique()))
 
-# Menampilkan summary statistik
-st.subheader("📊 Summary Statistics")
-st.write(df.describe())
+# Filter data berdasarkan tahun yang dipilih
+if selected_year != "All Dates":
+    df_filtered = df[df["order_year"] == selected_year]
+else:
+    df_filtered = df
 
-# Grafik 1: Histogram jumlah order per bulan
-if "order_month" in df.columns:
-    st.subheader("📆 Order Distribution Per Month")
+# Grafik Tren Jumlah Pesanan dari Waktu ke Waktu
+if "order_month" in df_filtered.columns:
+    st.subheader("📈 Tren Jumlah Pesanan dari Waktu ke Waktu")
+
+    # Menghitung jumlah pesanan per bulan
+    order_trend = df_filtered.groupby("order_month").size().reset_index(name="jumlah_pesanan")
+
+    # Visualisasi
     fig, ax = plt.subplots(figsize=(10, 5))
-    sns.histplot(df["order_month"].astype(str), bins=20, kde=True, ax=ax, color="blue")
+    plt.plot(order_trend["order_month"].astype(str), order_trend["jumlah_pesanan"], marker='o')
     plt.xticks(rotation=45)
-    ax.set_xlabel("Bulan")
-    ax.set_ylabel("Jumlah Order")
-    ax.set_title("Distribusi Order per Bulan")
+    plt.xlabel("Bulan")
+    plt.ylabel("Jumlah Pesanan")
+    plt.title("Tren Jumlah Pesanan dari Waktu ke Waktu")
+    plt.grid(True)
+
+    # Menampilkan plot
     st.pyplot(fig)
 
-# Grafik 2: Bar Chart jumlah order berdasarkan status
-if "order_status" in df.columns:
-    st.subheader("📦 Order Status Distribution")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.countplot(x=df["order_status"], palette="viridis", ax=ax)
-    ax.set_xlabel("Status Order")
-    ax.set_ylabel("Jumlah Order")
-    ax.set_title("Distribusi Status Order")
-    st.pyplot(fig)
+# Data transaksi metode pembayaran
+payment_methods = ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
+transaction_counts = [77000, 20000, 7000, 3000, 1000]
 
-# Grafik 3: Line Chart jumlah order per tahun menggunakan Plotly
-if "order_year" in df.columns:
-    st.subheader("📈 Jumlah Order per Tahun (Plotly)")
-    order_per_year = df.groupby("order_year").size().reset_index(name="count")
-    fig = px.line(order_per_year, x="order_year", y="count", markers=True, title="Tren Order per Tahun")
-    st.plotly_chart(fig)
+# Membuat plot
+plt.figure(figsize=(8, 6))
+sns.barplot(x=payment_methods, y=transaction_counts, color='steelblue')
+
+# Memberi judul dan label
+plt.title('Metode Pembayaran Paling Sering Digunakan')
+plt.xlabel('Metode Pembayaran')
+plt.ylabel('Jumlah Transaksi')
+
+# Rotasi label x agar miring
+plt.xticks(rotation=30)
+
+# Menampilkan plot
+plt.show()
+
+
+# Memberi judul dan label
+plt.title('Metode Pembayaran Paling Sering Digunakan')
+plt.xlabel('Metode Pembayaran')
+plt.ylabel('Jumlah Transaksi')
+
+# Rotasi label x agar miring
+plt.xticks(rotation=30)
+
+# Menampilkan plot
+st.pyplot(plt)
